@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "UrbanEntry",
+    "slug": "urbanentry-mobile",
+    "platforms": ["ios", "android", "web"],
+    "version": "1.0.0",
+    "web": {
+      "favicon": "./assets/logo.png",
+      "shortName": "UrbanEntry"
+    }
+  }
+}

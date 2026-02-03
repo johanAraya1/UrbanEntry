@@ -1,0 +1,69 @@
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Ignore build outputs
+target/
+build/
+dist/
+*.jar
+*.war
+
+# Ignore dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Ignore logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+*~
+
+# Ignore environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Ignore database files
+*.db
+*.sqlite
+
+# Ignore backups
+*.backup
+*.dump
+*.tar.gz
+
+# Ignore test coverage
+coverage/
+.nyc_output/
+
+# Frontend specific
+/frontend/.eslintcache
+/frontend/build/
+
+# Backend specific
+/backend/target/
+/backend/.mvn/
+/backend/mvnw
+/backend/mvnw.cmd
+
+# IDE-specific Spring Boot
+.springBeans
+.sts4-cache/
+
+# Ignore sensitive files
+application-secrets.properties
+*.pem
+*.key
+*.crt

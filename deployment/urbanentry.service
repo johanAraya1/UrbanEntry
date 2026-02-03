@@ -1,0 +1,49 @@
+[Unit]
+Description=UrbanEntry Backend API
+Documentation=https://github.com/johanAraya1/UrbanEntry
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=urbanentry
+Group=urbanentry
+WorkingDirectory=/opt/urbanentry
+
+# Environment variables (usar archivo externo en producción)
+Environment="SPRING_PROFILES_ACTIVE=prod"
+Environment="DB_URL=jdbc:postgresql://localhost:5432/urbanentry_db"
+Environment="DB_USERNAME=urbanentry_user"
+Environment="DB_PASSWORD=changeme"
+Environment="JWT_SECRET=YourSuperSecretKeyMinimum256BitsForProduction"
+Environment="CORS_ORIGINS=https://yourdomain.com"
+
+# Main execution
+ExecStart=/usr/bin/java \
+    -Xms512m \
+    -Xmx1024m \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -Djava.security.egd=file:/dev/./urandom \
+    -jar /opt/urbanentry/urbanentry-backend.jar
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=urbanentry
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/urbanentry/logs
+
+[Install]
+WantedBy=multi-user.target
