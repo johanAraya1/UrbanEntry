@@ -30,6 +30,12 @@ public class DailyVisit {
     @Column(name = "visitor_name", nullable = false, length = 255)
     private String visitorName;
 
+    @Column(name = "document_type", length = 50)
+    private String documentType;
+
+    @Column(name = "id_number", length = 50)
+    private String idNumber;
+
     @Column(name = "license_plate", length = 20)
     private String licensePlate;
 

@@ -28,6 +28,9 @@ public class AuthorizedPerson {
     @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
 
+    @Column(name = "document_type", length = 50)
+    private String documentType = "CEDULA";
+
     @Column(name = "id_card", length = 50)
     private String idCard;
 

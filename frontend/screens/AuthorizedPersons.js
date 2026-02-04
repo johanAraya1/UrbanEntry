@@ -9,8 +9,10 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  ScrollView
+  ScrollView,
+  Platform
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,12 +32,13 @@ export default function AuthorizedPersons({ navigation }) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    documentType: 'CEDULA',
     idNumber: '',
     licensePlate: ''
   });
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ title: '', message: '' });
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' });
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -45,7 +48,7 @@ export default function AuthorizedPersons({ navigation }) {
       const data = await authorizedService.list();
       setItems(data);
     } catch (err) {
-      showAlert(t('alerts.error'), t('alerts.loadError'));
+      showAlert(t('alerts.error'), t('alerts.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -57,14 +60,133 @@ export default function AuthorizedPersons({ navigation }) {
     }, [loadData])
   );
 
-  const showAlert = (title, message) => {
-    setAlertConfig({ title, message });
+  const showAlert = (title, message, type = 'success') => {
+    setAlertConfig({ title, message, type });
     setAlertVisible(true);
+  };
+
+  const normalizeText = (text) => {
+    if (!text) return text;
+    // Normalize Unicode characters to ensure proper encoding
+    return text.normalize('NFC').trim();
+  };
+
+  const formatIdNumber = (documentType, text) => {
+    // Remover caracteres no permitidos según el tipo
+    let cleanText = text;
+    
+    switch (documentType) {
+      case 'CEDULA':
+        // Solo números
+        cleanText = text.replace(/\D/g, '');
+        // Máximo 9 dígitos (1-1234-5678)
+        if (cleanText.length > 9) cleanText = cleanText.slice(0, 9);
+        // Formatear con guiones automáticamente
+        if (cleanText.length > 5) {
+          return `${cleanText.slice(0, 1)}-${cleanText.slice(1, 5)}-${cleanText.slice(5)}`;
+        } else if (cleanText.length > 1) {
+          return `${cleanText.slice(0, 1)}-${cleanText.slice(1)}`;
+        }
+        return cleanText;
+      
+      case 'CEDULA_RESIDENCIA':
+        // Solo números
+        cleanText = text.replace(/\D/g, '');
+        // Máximo 12 dígitos (123-456789-0123)
+        if (cleanText.length > 12) cleanText = cleanText.slice(0, 12);
+        // Formatear con guiones automáticamente
+        if (cleanText.length > 9) {
+          return `${cleanText.slice(0, 3)}-${cleanText.slice(3, 9)}-${cleanText.slice(9)}`;
+        } else if (cleanText.length > 3) {
+          return `${cleanText.slice(0, 3)}-${cleanText.slice(3)}`;
+        }
+        return cleanText;
+      
+      case 'PASAPORTE':
+        // Alfanumérico mayúsculas
+        cleanText = text.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        // Máximo 15 caracteres
+        if (cleanText.length > 15) cleanText = cleanText.slice(0, 15);
+        return cleanText;
+      
+      case 'OTRO':
+        // Formato libre, máximo 50 caracteres
+        if (cleanText.length > 50) cleanText = cleanText.slice(0, 50);
+        return cleanText;
+      
+      default:
+        return text;
+    }
+  };
+
+  const validateIdNumber = (documentType, idNumber) => {
+    if (!idNumber) return false;
+
+    // Remover guiones para validar solo números
+    const cleanNumber = idNumber.replace(/-/g, '');
+
+    switch (documentType) {
+      case 'CEDULA':
+        // Debe tener exactamente 9 dígitos
+        return cleanNumber.length === 9 && /^\d+$/.test(cleanNumber);
+      
+      case 'CEDULA_RESIDENCIA':
+        // Entre 11 y 12 dígitos
+        return cleanNumber.length >= 11 && cleanNumber.length <= 12 && /^\d+$/.test(cleanNumber);
+      
+      case 'PASAPORTE':
+        // Alfanumérico, entre 6 y 15 caracteres
+        return cleanNumber.length >= 6 && cleanNumber.length <= 15 && /^[A-Z0-9]+$/i.test(cleanNumber);
+      
+      case 'OTRO':
+        // Sin validación estricta, solo que tenga contenido
+        return idNumber.length > 0;
+      
+      default:
+        return false;
+    }
+  };
+
+  const getIdNumberPlaceholder = () => {
+    switch (formData.documentType) {
+      case 'CEDULA':
+        return '101234567';
+      case 'CEDULA_RESIDENCIA':
+        return '123456789012';
+      case 'PASAPORTE':
+        return 'ABC123456';
+      case 'OTRO':
+        return t('authorizedPersons.freeFormat');
+      default:
+        return '';
+    }
+  };
+
+  const handleIdNumberChange = (text) => {
+    const formatted = formatIdNumber(formData.documentType, text);
+    setFormData({ ...formData, idNumber: formatted });
+  };
+
+  const handleLicensePlateChange = (text) => {
+    // Solo permitir letras y números, máximo 10 caracteres
+    const cleaned = text.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const limited = cleaned.slice(0, 10);
+    setFormData({ ...formData, licensePlate: limited });
+  };
+
+  const isFormValid = () => {
+    // Validar que los campos obligatorios no estén vacíos
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.idNumber.trim()) {
+      return false;
+    }
+    
+    // Validar el formato del documento
+    return validateIdNumber(formData.documentType, formData.idNumber);
   };
 
   const openAddModal = () => {
     setEditingItem(null);
-    setFormData({ firstName: '', lastName: '', idNumber: '', licensePlate: '' });
+    setFormData({ firstName: '', lastName: '', documentType: 'CEDULA', idNumber: '', licensePlate: '' });
     setModalVisible(true);
   };
 
@@ -73,6 +195,7 @@ export default function AuthorizedPersons({ navigation }) {
     setFormData({
       firstName: item.firstName || '',
       lastName: item.lastName || '',
+      documentType: item.documentType || 'CEDULA',
       idNumber: item.idNumber || '',
       licensePlate: item.licensePlate || ''
     });
@@ -82,28 +205,47 @@ export default function AuthorizedPersons({ navigation }) {
   const closeModal = () => {
     setModalVisible(false);
     setEditingItem(null);
-    setFormData({ firstName: '', lastName: '', idNumber: '', licensePlate: '' });
+    setFormData({ firstName: '', lastName: '', documentType: 'CEDULA', idNumber: '', licensePlate: '' });
   };
 
   const handleSave = async () => {
     if (!formData.firstName || !formData.lastName || !formData.idNumber) {
-      showAlert(t('alerts.warning'), t('alerts.incompleteFields'));
+      showAlert(t('alerts.warning'), t('alerts.incompleteFields'), 'warning');
       return;
     }
+
+    // Validar formato según tipo de documento
+    if (!validateIdNumber(formData.documentType, formData.idNumber)) {
+      showAlert(
+        t('alerts.warning'), 
+        t('authorizedPersons.invalidIdFormat') || 'Formato de documento inválido para el tipo seleccionado',
+        'warning'
+      );
+      return;
+    }
+
+    // Normalize all text fields to ensure proper UTF-8 encoding
+    const normalizedData = {
+      firstName: normalizeText(formData.firstName),
+      lastName: normalizeText(formData.lastName),
+      documentType: formData.documentType,
+      idNumber: normalizeText(formData.idNumber),
+      licensePlate: formData.licensePlate ? normalizeText(formData.licensePlate.toUpperCase()) : ''
+    };
 
     setSaving(true);
     try {
       if (editingItem) {
-        await authorizedService.update(editingItem.id, formData);
-        showAlert(t('alerts.success'), t('authorizedPersons.updateSuccess'));
+        await authorizedService.update(editingItem.id, normalizedData);
+        showAlert(t('alerts.success'), t('authorizedPersons.updateSuccess'), 'success');
       } else {
-        await authorizedService.create(formData);
-        showAlert(t('alerts.success'), t('authorizedPersons.createSuccess'));
+        await authorizedService.create(normalizedData);
+        showAlert(t('alerts.success'), t('authorizedPersons.createSuccess'), 'success');
       }
       closeModal();
       loadData();
     } catch (err) {
-      showAlert(t('alerts.error'), err?.response?.data?.message || t('alerts.saveError'));
+      showAlert(t('alerts.error'), err?.response?.data?.message || t('alerts.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -119,10 +261,10 @@ export default function AuthorizedPersons({ navigation }) {
     
     try {
       await authorizedService.remove(itemToDelete.id);
-      showAlert(t('alerts.success'), t('authorizedPersons.deleteSuccess'));
+      showAlert(t('alerts.success'), t('authorizedPersons.deleteSuccess'), 'success');
       loadData();
     } catch (err) {
-      showAlert(t('alerts.error'), t('alerts.deleteError'));
+      showAlert(t('alerts.error'), t('alerts.deleteError'), 'error');
     } finally {
       setItemToDelete(null);
     }
@@ -155,44 +297,45 @@ export default function AuthorizedPersons({ navigation }) {
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <View style={styles.logoWrapper}>
-              <AppLogo size="small" />
-            </View>
+            <Text style={styles.title}>{t('authorizedPersons.title')}</Text>
             <View style={styles.placeholder} />
           </View>
-
-          <Text style={styles.title}>{t('authorizedPersons.title')}</Text>
 
           {/* Empty State */}
           {!loading && items.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="people-outline" size={80} color="rgba(255,255,255,0.5)" />
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="person-add-outline" size={64} color="#fff" />
+              </View>
               <Text style={styles.emptyText}>{t('authorizedPersons.noData')}</Text>
               <Text style={styles.emptySubText}>{t('authorizedPersons.addFirst')}</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton} 
+                onPress={openAddModal}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle" size={24} color="#3E8A91" style={{ marginRight: 8 }} />
+                <Text style={styles.emptyButtonText}>{t('authorizedPersons.addPerson')}</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* List */}
-          <FlatList 
-            data={items} 
-            keyExtractor={(i) => String(i.id)} 
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
+          {!loading && items.length > 0 && (
+            <FlatList 
+              data={items} 
+              keyExtractor={(i) => String(i.id)} 
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <View style={styles.card}>
                   <View style={styles.iconCircle}>
                     <Ionicons name="person" size={24} color={colors.primary} />
                   </View>
                   <View style={styles.cardInfo}>
-                    <Text style={styles.cardName}>{item.firstName} {item.lastName}</Text>
-                    <Text style={styles.cardDetail}>
-                      <Ionicons name="card-outline" size={14} color="#666" /> {item.idNumber}
-                    </Text>
-                    {item.licensePlate && (
-                      <Text style={styles.cardDetail}>
-                        <Ionicons name="car-outline" size={14} color="#666" /> {item.licensePlate}
-                      </Text>
-                    )}
+                    <Text style={styles.cardName}>{`${item.firstName} ${item.lastName}`}</Text>
+                    <Text style={styles.cardDetail}>{`Documento: ${item.idNumber}`}</Text>
+                    {item.licensePlate ? (
+                      <Text style={styles.cardDetail}>{`Placa: ${item.licensePlate}`}</Text>
+                    ) : null}
                   </View>
                   <View style={styles.cardActions}>
                     <TouchableOpacity 
@@ -209,14 +352,16 @@ export default function AuthorizedPersons({ navigation }) {
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
-            )} 
-          />
+              )} 
+            />
+          )}
 
           {/* Add Button */}
-          <TouchableOpacity style={styles.fab} onPress={openAddModal}>
-            <Ionicons name="add" size={28} color="#fff" />
-          </TouchableOpacity>
+          {!loading && items.length > 0 && (
+            <TouchableOpacity style={styles.fab} onPress={openAddModal}>
+              <Ionicons name="add" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Add/Edit Modal */}
@@ -261,14 +406,31 @@ export default function AuthorizedPersons({ navigation }) {
                 </View>
 
                 <View style={styles.inputGroup}>
+                  <Text style={styles.label}>{t('authorizedPersons.documentType')}</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={formData.documentType}
+                      onValueChange={(value) => setFormData({ ...formData, documentType: value, idNumber: '' })}
+                      style={styles.picker}
+                      dropdownIconColor="#3E8A91"
+                    >
+                      <Picker.Item label={t('authorizedPersons.cedula')} value="CEDULA" />
+                      <Picker.Item label={t('authorizedPersons.cedulaResidencia')} value="CEDULA_RESIDENCIA" />
+                      <Picker.Item label={t('authorizedPersons.pasaporte')} value="PASAPORTE" />
+                      <Picker.Item label={t('authorizedPersons.otro')} value="OTRO" />
+                    </Picker>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
                   <Text style={styles.label}>{t('authorizedPersons.idNumber')}</Text>
                   <TextInput
                     style={styles.input}
                     value={formData.idNumber}
-                    onChangeText={(text) => setFormData({ ...formData, idNumber: text })}
-                    placeholder={t('authorizedPersons.idNumber')}
+                    onChangeText={handleIdNumberChange}
+                    placeholder={getIdNumberPlaceholder()}
                     placeholderTextColor="#999"
-                    keyboardType="numeric"
+                    keyboardType={formData.documentType === 'PASAPORTE' ? 'default' : 'numeric'}
                   />
                 </View>
 
@@ -277,10 +439,10 @@ export default function AuthorizedPersons({ navigation }) {
                   <TextInput
                     style={styles.input}
                     value={formData.licensePlate}
-                    onChangeText={(text) => setFormData({ ...formData, licensePlate: text.toUpperCase() })}
-                    placeholder={t('authorizedPersons.licensePlate')}
+                    onChangeText={handleLicensePlateChange}
+                    placeholder="ABC1234"
                     placeholderTextColor="#999"
-                    autoCapitalize="characters"
+                    maxLength={10}
                   />
                 </View>
               </ScrollView>
@@ -294,14 +456,23 @@ export default function AuthorizedPersons({ navigation }) {
                   <Text style={styles.buttonTextSecondary}>{t('authorizedPersons.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.button, styles.buttonPrimary]} 
+                  style={[
+                    styles.button, 
+                    styles.buttonPrimary,
+                    (!isFormValid() || saving) && styles.buttonDisabled
+                  ]} 
                   onPress={handleSave}
-                  disabled={saving}
+                  disabled={!isFormValid() || saving}
                 >
                   {saving ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.buttonText}>{t('authorizedPersons.save')}</Text>
+                    <Text style={[
+                      styles.buttonText,
+                      (!isFormValid() || saving) && styles.buttonTextDisabled
+                    ]}>
+                      {t('authorizedPersons.save')}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -313,6 +484,7 @@ export default function AuthorizedPersons({ navigation }) {
           visible={alertVisible}
           title={alertConfig.title}
           message={alertConfig.message}
+          type={alertConfig.type}
           onClose={() => setAlertVisible(false)}
         />
 
@@ -371,6 +543,7 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 28, 
     fontWeight: '700',
+    marginTop: 16,
     marginBottom: 20,
     marginHorizontal: 16,
     color: '#fff',
@@ -378,22 +551,53 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    marginTop: 20,
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   emptyText: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#fff',
-    marginTop: 16,
+    marginBottom: 12,
     textAlign: 'center',
   },
   emptySubText: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 8,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 32,
     textAlign: 'center',
+    lineHeight: 24,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minHeight: 56,
+  },
+  emptyButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#3E8A91',
   },
   listContent: {
     padding: 16,
@@ -408,11 +612,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-  },
-  cardHeader: {
     flexDirection: 'row',
-    padding: 16,
     alignItems: 'center',
+    padding: 16,
   },
   iconCircle: {
     width: 48,
@@ -439,6 +641,7 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   actionButton: {
@@ -510,6 +713,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  pickerContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    color: colors.neutral,
+  },
   modalFooter: {
     flexDirection: 'row',
     padding: 20,
@@ -526,6 +740,10 @@ const styles = StyleSheet.create({
   buttonPrimary: {
     backgroundColor: colors.primary,
   },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
   buttonSecondary: {
     backgroundColor: '#f5f5f5',
   },
@@ -533,6 +751,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  buttonTextDisabled: {
+    color: '#999',
   },
   buttonTextSecondary: {
     color: colors.neutral,

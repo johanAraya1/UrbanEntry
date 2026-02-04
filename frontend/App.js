@@ -8,6 +8,7 @@ import { LanguageProvider } from './src/i18n/LanguageContext';
 import Login from './screens/Login';
 import Dashboard from './screens/Dashboard';
 import AuthorizedPersons from './screens/AuthorizedPersons';
+import DailyVisits from './screens/DailyVisits';
 import MemberManagement from './screens/MemberManagement';
 import Profile from './screens/Profile';
 
@@ -22,7 +23,8 @@ export default function App() {
           <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
           <Stack.Screen name="Dashboard" component={Dashboard} options={{ headerShown: false }} />
           <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
-          <Stack.Screen name="AuthorizedPersons" component={AuthorizedPersons} options={{ title: 'Autorizados' }} />
+          <Stack.Screen name="AuthorizedPersons" component={AuthorizedPersons} options={{ headerShown: false }} />
+          <Stack.Screen name="DailyVisits" component={DailyVisits} options={{ headerShown: false }} />
           <Stack.Screen name="MemberManagement" component={MemberManagement} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>

@@ -6,7 +6,13 @@
     "version": "1.0.0",
     "web": {
       "favicon": "./assets/logo.png",
-      "shortName": "UrbanEntry"
+      "shortName": "UrbanEntry",
+      "config": {
+        "favicon": {
+          "backgroundColor": "#ffffff",
+          "resizeMode": "contain"
+        }
+      }
     }
   }
 }

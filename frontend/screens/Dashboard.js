@@ -107,7 +107,7 @@ export default function Dashboard({ navigation }) {
         title={t('dashboard.menu.dailyVisits')}
         description={t('dashboard.menu.dailyVisitsDesc')}
         color="#1976D2"
-        onPress={() => {/* TODO: navigate to daily visits */}}
+        onPress={() => navigation.navigate('DailyVisits')}
       />
       <MenuCard
         icon="time"

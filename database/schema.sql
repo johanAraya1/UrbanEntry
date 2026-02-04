@@ -78,6 +78,8 @@ CREATE INDEX idx_authorized_active ON authorized_persons(is_active) WHERE is_act
 CREATE TABLE daily_visits (
     id BIGSERIAL PRIMARY KEY,
     visitor_name VARCHAR(255) NOT NULL,
+    document_type VARCHAR(50),
+    id_number VARCHAR(50),
     license_plate VARCHAR(20),
     visit_date DATE NOT NULL,
     expected_time_from TIME,
